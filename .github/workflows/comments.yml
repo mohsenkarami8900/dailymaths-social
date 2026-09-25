@@ -1,0 +1,36 @@
+name: Reply to comments
+
+on:
+  schedule:
+    - cron: "*/30 6-22 * * *"   # every 30 minutes, daytime (UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: social-comments
+  cancel-in-progress: false
+
+jobs:
+  comments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check comments and reply
+        env:
+          META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: python run_comments.py
+      - name: Save state
+        if: always()
+        run: |
+          git config user.name "dailymaths-bot"
+          git config user.email "dailymaths-bot@users.noreply.github.com"
+          git add data/ || true
+          git diff --cached --quiet || (git commit -m "Comments $(date -u +%FT%H%M)" && git pull --rebase && git push)
