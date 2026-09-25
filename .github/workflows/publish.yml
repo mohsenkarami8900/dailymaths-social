@@ -1,0 +1,95 @@
+name: Publish to Instagram & Facebook
+
+on:
+  schedule:
+    # UTC times. Two runs cover UK winter (GMT) and summer (BST) time;
+    # the script only posts once, at 16:00 UK time.
+    - cron: "35 14 * * *"
+    - cron: "35 15 * * *"
+  workflow_dispatch:
+    inputs:
+      kinds:
+        description: "What to post: story, reel, carousel (comma separated) or auto"
+        type: string
+        default: "story,reel,carousel"
+      dry_run:
+        description: "Preview only: send to my Telegram, don't publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: social-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Decide what to post
+        id: plan
+        env:
+          KINDS: ${{ inputs.kinds }}
+        run: python run_publish.py plan
+
+      - name: Install tools
+        if: steps.plan.outputs.go == 'true'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Create images and videos
+        if: steps.plan.outputs.go == 'true'
+        env:
+          KINDS: ${{ steps.plan.outputs.kinds }}
+          DAY: ${{ steps.plan.outputs.day }}
+        run: python run_publish.py build
+
+      - name: Wait until 16:00 UK time
+        if: steps.plan.outputs.go == 'true'
+        run: python run_publish.py wait
+
+      - uses: actions/configure-pages@v5
+        if: steps.plan.outputs.go == 'true'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.plan.outputs.go == 'true'
+        with:
+          path: site
+
+      - name: Put media online
+        id: deploy
+        if: steps.plan.outputs.go == 'true'
+        uses: actions/deploy-pages@v4
+
+      - name: Publish
+        if: steps.plan.outputs.go == 'true'
+        env:
+          BASE_URL: ${{ steps.deploy.outputs.page_url }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: python run_publish.py publish
+
+      - name: Save state
+        if: always() && steps.plan.outputs.go == 'true'
+        run: |
+          git config user.name "dailymaths-bot"
+          git config user.email "dailymaths-bot@users.noreply.github.com"
+          git add data/ || true
+          git diff --cached --quiet || (git commit -m "Posted $(date -u +%F)" && git pull --rebase && git push)
