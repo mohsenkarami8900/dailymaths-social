@@ -5,7 +5,7 @@ Renders Instagram / Facebook media for Daily Maths UK.
 - render_carousel(puzzles, dir)  -> 6 JPEG slides (1080x1350): 5 level puzzles + answers
 
 HTML templates are rendered to PNG with headless Chromium (Playwright);
-the video is assembled with ffmpeg.
+the video is assembled with ffmpeg, with background music from music.py.
 """
 
 import asyncio
@@ -19,6 +19,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 from playwright.async_api import async_playwright
+
+from music import make_track
 
 ROOT = Path(__file__).resolve().parent
 FONTS = ROOT / "fonts"
@@ -172,10 +174,11 @@ def render_story(q, out_mp4, workdir="/tmp/story_work", seed=1):
                   delay=rnd.uniform(0, 0.6), c=rnd.choice(CONFETTI)) for _ in range(260)]
 
     intro, count_s, reveal_s = 1.0, 5.0, 5.5
+    music_wav = make_track(os.path.join(workdir, "music.wav"), seed=seed, style="sneaky")
     total = int((intro + count_s + reveal_s) * FPS)
     cmd = ["ffmpeg", "-y", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-           "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+           "-i", str(music_wav), "-map", "0:v", "-map", "1:a",
            "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-profile:v", "high",
            "-preset", "medium", "-crf", "20", "-movflags", "+faststart",
            "-c:a", "aac", "-b:a", "128k", str(out_mp4)]
