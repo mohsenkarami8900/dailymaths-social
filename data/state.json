@@ -1,8 +1,8 @@
 {
  "done": {
-  "story": "2026-09-29",
+  "story": "2026-09-30",
   "reel": "2026-09-29",
-  "carousel": "2026-09-28"
+  "carousel": "2026-09-30"
  },
  "recent_gens": [
   "k1_legs",
@@ -14,6 +14,11 @@
   "k2_minutes",
   "k3_equation",
   "gf_triangle",
-  "gh_gradient"
+  "gh_gradient",
+  "k1_half",
+  "k2_pizza",
+  "k3_polygon",
+  "gf_probability",
+  "gh_recip"
  ]
 }
