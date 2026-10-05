@@ -1,15 +1,10 @@
 {
  "done": {
-  "story": "2026-10-04",
+  "story": "2026-10-05",
   "reel": "2026-10-03",
-  "carousel": "2026-10-02"
+  "carousel": "2026-10-05"
  },
  "recent_gens": [
-  "k1_coins",
-  "k2_minutes",
-  "k3_equation",
-  "gf_triangle",
-  "gh_gradient",
   "k1_half",
   "k2_pizza",
   "k3_polygon",
@@ -19,6 +14,11 @@
   "k2_books",
   "k3_squares",
   "gf_discount",
-  "gh_roots"
+  "gh_roots",
+  "k1_bags",
+  "k2_99",
+  "k3_25",
+  "gf_increase",
+  "gh_simul"
  ]
 }
