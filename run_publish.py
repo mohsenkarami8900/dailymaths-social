@@ -190,50 +190,71 @@ def publish():
         return
 
     now = datetime.now(TZ).isoformat()
-    if "story" in items:
+    day = b["day"]
+    done = state["done"]
+
+    def step(kind, plat, label, fn):
+        """Run one post once per day per platform. A spam block is not retried today."""
+        key = f"{kind}_{plat}"
+        if done.get(key) == day:
+            print(f"{label}: already done today, skipping")
+            return
         try:
-            mid = M.ig_story_video(base + items["story"]["file"])
-            print("IG story:", mid)
-            state["done"]["story"] = b["day"]
+            fn()
+            done[key] = day
         except Exception as e:
-            errors.append(f"Story: {e}")
+            msg = str(e)
+            if "2207051" in msg or "action is blocked" in msg:
+                done[key] = day          # don't hammer Instagram again today
+                errors.append(f"{label}: Instagram blocked this post as possible spam "
+                              f"(not retried today). Details: {msg[:300]}")
+            else:
+                errors.append(f"{label}: {msg}")
+
+    if "story" in items:
+        def _story():
+            print("IG story:", M.ig_story_video(base + items["story"]["file"]))
+        step("story", "ig", "Story", _story)
 
     if "reel" in items:
         r = items["reel"]
         q = r["q"]
         key = {"letter": q["letter"], "accept": q["accept"], "wrong": q["wrong"]}
-        try:
+
+        def _ig_reel():
             mid = M.ig_reel(base + r["file"], r["caption"])
             posts.append({"platform": "ig", "kind": "reel", "id": mid, "time": now, **key})
             print("IG reel:", mid)
-            state["done"]["reel"] = b["day"]
-        except Exception as e:
-            errors.append(f"Reel (Instagram): {e}")
-        try:
+
+        def _fb_reel():
             vid = M.fb_video(base + r["file"], r["caption"])
             posts.append({"platform": "fb", "kind": "reel", "id": vid, "time": now, **key})
             print("FB video:", vid)
-        except Exception as e:
-            errors.append(f"Reel (Facebook): {e}")
+        step("reel", "ig", "Reel (Instagram)", _ig_reel)
+        step("reel", "fb", "Reel (Facebook)", _fb_reel)
 
     if "carousel" in items:
         c = items["carousel"]
         urls = [base + f for f in c["files"]]
         key = {"accepts": [p["accept"] for _, p in c["puzzles"]]}
-        try:
+
+        def _ig_carousel():
             mid = M.ig_carousel(urls, c["caption"])
             posts.append({"platform": "ig", "kind": "carousel", "id": mid, "time": now, **key})
             print("IG carousel:", mid)
-            state["done"]["carousel"] = b["day"]
             state["recent_gens"] = (state.get("recent_gens", []) + c["used"])[-15:]
-        except Exception as e:
-            errors.append(f"Carousel (Instagram): {e}")
-        try:
+
+        def _fb_carousel():
             pid = M.fb_photos_post(urls, c["caption"])
             posts.append({"platform": "fb", "kind": "carousel", "id": pid, "time": now, **key})
             print("FB post:", pid)
-        except Exception as e:
-            errors.append(f"Carousel (Facebook): {e}")
+        step("carousel", "ig", "Carousel (Instagram)", _ig_carousel)
+        step("carousel", "fb", "Carousel (Facebook)", _fb_carousel)
+
+    # a kind is finished for today when every platform for it is done (or blocked)
+    for kind, plats in (("story", ["ig"]), ("reel", ["ig", "fb"]), ("carousel", ["ig", "fb"])):
+        if kind in items and all(done.get(f"{kind}_{p}") == day for p in plats):
+            done[kind] = day
 
     cutoff = (datetime.now(TZ) - timedelta(days=10)).isoformat()
     save(POSTS, [p for p in posts if p["time"] >= cutoff])
