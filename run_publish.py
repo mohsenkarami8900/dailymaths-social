@@ -4,13 +4,11 @@ Daily publisher for Instagram + Facebook.
 Steps (called one by one from .github/workflows/publish.yml):
   python run_publish.py plan      decide what to post today  -> GITHUB_OUTPUT go/kinds
   python run_publish.py build     render media into site/    -> build.json
-  python run_publish.py wait      sleep until 16:00 UK time (scheduled runs only)
+  python run_publish.py wait      sleep until the posting time (scheduled runs only)
   python run_publish.py publish   post to Instagram/Facebook (or preview to Telegram)
 
-Schedule (UK time, 16:00):
-  every day      story (video)
-  Mon/Wed/Fri    carousel (5 puzzles + answers)
-  Tue/Thu/Sat    reel (countdown video)
+Schedule (UK time): Thursday 18:00 and Saturday 05:00, each time
+  story (video) + reel (countdown video) + carousel (5 puzzles + answers)
 """
 
 import json
@@ -30,11 +28,8 @@ STATE = DATA / "state.json"
 POSTS = DATA / "posts.json"
 BUILD = ROOT / "build.json"
 TZ = ZoneInfo("Europe/London")
-POST_HOUR = 16
 WINDOW_MIN = 40
-
-CAROUSEL_DAYS = {0, 2, 4}   # Mon, Wed, Fri
-REEL_DAYS = {1, 3, 5}       # Tue, Thu, Sat
+POST_SLOTS = {3: 18, 5: 5}       # Thursday 18:00, Saturday 05:00 (UK time)
 
 
 def load(p, default):
@@ -77,34 +72,35 @@ def plan():
         if kinds == "auto":
             kinds = ",".join(todays_kinds(now))
         return out(go="true", kinds=kinds, day=today)
-    target = now.replace(hour=POST_HOUR, minute=0, second=0, microsecond=0)
-    if now < target and (target - now).total_seconds() > WINDOW_MIN * 60:
-        print("Too early; the other scheduled run will post.")
+    pending = [k for k in todays_kinds(now) if state["done"].get(k) != today]
+    if not pending:
+        print("Nothing left to post today.")
         return out(go="false")
-    kinds = [k for k in todays_kinds(now) if state["done"].get(k) != today]
-    if not kinds:
-        print("Already posted today.")
+    # due = target time has passed, or is less than WINDOW_MIN away (the run then waits)
+    due = [k for k in pending if (target_time(now, k) - now).total_seconds() <= WINDOW_MIN * 60]
+    if not due:
+        print("Too early; a later scheduled run will post:", ", ".join(pending))
         return out(go="false")
-    out(go="true", kinds=",".join(kinds), day=today)
+    out(go="true", kinds=",".join(due), day=today)
+
+
+def target_time(now, kind):
+    return now.replace(hour=POST_SLOTS.get(now.weekday(), 0), minute=0, second=0, microsecond=0)
 
 
 def todays_kinds(now):
-    k = ["story"]
-    if now.weekday() in CAROUSEL_DAYS:
-        k.append("carousel")
-    if now.weekday() in REEL_DAYS:
-        k.append("reel")
-    return k
+    return ["story", "reel", "carousel"] if now.weekday() in POST_SLOTS else []
 
 
 def wait():
     if manual():
         return
     now = datetime.now(TZ)
-    target = now.replace(hour=POST_HOUR, minute=0, second=0, microsecond=0)
+    kinds = list(load(BUILD, {"items": {}})["items"]) or ["story"]
+    target = max(target_time(now, k) for k in kinds)
     if now < target:
         s = (target - now).total_seconds()
-        print(f"Waiting {s/60:.1f} min until {POST_HOUR}:00 UK time…")
+        print(f"Waiting {s/60:.1f} min until {target:%H:%M} UK time…")
         time.sleep(s)
 
 
