@@ -2,10 +2,12 @@ name: Publish to Instagram & Facebook
 
 on:
   schedule:
-    # UTC times. Two runs cover UK winter (GMT) and summer (BST) time;
-    # the script only posts once, at 16:00 UK time.
-    - cron: "35 14 * * *"
-    - cron: "35 15 * * *"
+    # UTC times. Two runs per slot cover UK winter (GMT) and summer (BST) time;
+    # the script posts once per slot: Thursday 18:00 and Saturday 05:00 UK time.
+    - cron: "35 16 * * 4"
+    - cron: "35 17 * * 4"
+    - cron: "35 3 * * 6"
+    - cron: "35 4 * * 6"
   workflow_dispatch:
     inputs:
       kinds:
