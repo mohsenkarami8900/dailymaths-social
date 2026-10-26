@@ -9,6 +9,12 @@ Steps (called one by one from .github/workflows/publish.yml):
 
 Schedule (UK time): Thursday 18:00 and Saturday 05:00, each time
   story (video) + reel (countdown video) + carousel (5 puzzles + answers)
+
+GitHub sometimes starts scheduled runs hours late, so the workflow runs every
+10 minutes in the hour after each slot; the FIRST run after the slot time posts
+(a late run may still post up to LATE_HOURS later) and data/state.json stops
+any second post. If nothing went out ALERT_AFTER_MIN after the slot, the admin
+gets one Telegram alert with a link to run the workflow by hand.
 """
 
 import json
@@ -28,8 +34,11 @@ STATE = DATA / "state.json"
 POSTS = DATA / "posts.json"
 BUILD = ROOT / "build.json"
 TZ = ZoneInfo("Europe/London")
-WINDOW_MIN = 40
 POST_SLOTS = {3: 18, 5: 5}       # Thursday 18:00, Saturday 05:00 (UK time)
+LATE_HOURS = 5                   # a late GitHub run may still post up to 5 h after the slot
+ALERT_AFTER_MIN = 40             # alert the admin if nothing was posted 40 min after the slot
+ALL_KINDS = ["story", "reel", "carousel"]
+WORKFLOW_URL = "https://github.com/mohsenkarami8900/dailymaths-social/actions/workflows/publish.yml"
 
 
 def load(p, default):
@@ -65,23 +74,66 @@ def dry_run():
 
 def plan():
     now = datetime.now(TZ)
+    go = False
+    try:
+        go = _plan(now)
+    finally:
+        if not go:                   # this run won't post: tell the admin if today was missed
+            alert_if_missed()
+
+
+def _plan(now):
     today = now.date().isoformat()
     state = load(STATE, {"done": {}})
     if manual():
-        kinds = os.environ.get("KINDS", "story").replace(" ", "")
-        if kinds == "auto":
-            kinds = ",".join(todays_kinds(now))
-        return out(go="true", kinds=kinds, day=today)
+        kinds = os.environ.get("KINDS", "auto").replace(" ", "")
+        if kinds == "auto":          # the "Run workflow" button: post whatever is still missing today
+            kinds = ",".join(k for k in ALL_KINDS if state["done"].get(k) != today)
+        if not kinds:
+            print("Everything was already posted today.")
+            return out(go="false")
+        out(go="true", kinds=kinds, day=today)
+        return True
     pending = [k for k in todays_kinds(now) if state["done"].get(k) != today]
     if not pending:
         print("Nothing left to post today.")
         return out(go="false")
-    # due = target time has passed, or is less than WINDOW_MIN away (the run then waits)
-    due = [k for k in pending if (target_time(now, k) - now).total_seconds() <= WINDOW_MIN * 60]
-    if not due:
+    target = target_time(now, pending[0])
+    if now < target:
         print("Too early; a later scheduled run will post:", ", ".join(pending))
         return out(go="false")
-    out(go="true", kinds=",".join(due), day=today)
+    if now >= target + timedelta(hours=LATE_HOURS):
+        print("Too late to post today:", ", ".join(pending))
+        return out(go="false")
+    out(go="true", kinds=",".join(pending), day=today)
+    return True
+
+
+def alert_if_missed():
+    """Send the admin ONE Telegram alert a day if today's slot has not been posted."""
+    if dry_run():
+        return
+    now = datetime.now(TZ)
+    if now.weekday() not in POST_SLOTS:
+        return
+    today = now.date().isoformat()
+    state = load(STATE, {"done": {}})
+    missing = [k for k in ALL_KINDS if state["done"].get(k) != today]
+    if not missing or state.get("alerted") == today:
+        return
+    if now < target_time(now, "story") + timedelta(minutes=ALERT_AFTER_MIN):
+        return
+    try:
+        import meta as M
+        M.telegram(f"⚠️ Daily Maths UK: today's Instagram/Facebook posts have NOT gone out yet "
+                   f"({now:%A %H:%M} UK time). Missing: {', '.join(missing)}.\n\n"
+                   f"Open this page and press the green “Run workflow” button "
+                   f"(no need to change anything):\n{WORKFLOW_URL}")
+        state["alerted"] = today
+        save(STATE, state)
+        print("Alert sent to the admin.")
+    except Exception as e:
+        print("Alert failed:", e)
 
 
 def target_time(now, kind):
@@ -160,6 +212,13 @@ def wait_url(url, timeout=300):
 
 
 def publish():
+    try:
+        _publish()
+    finally:
+        alert_if_missed()
+
+
+def _publish():
     import meta as M
     base = os.environ["BASE_URL"].rstrip("/") + "/"
     b = load(BUILD, None)
