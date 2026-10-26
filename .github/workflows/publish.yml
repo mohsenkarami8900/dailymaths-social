@@ -2,22 +2,24 @@ name: Publish to Instagram & Facebook
 
 on:
   schedule:
-    # UTC times. Two runs per slot cover UK winter (GMT) and summer (BST) time;
-    # the script posts once per slot: Thursday 18:00 and Saturday 05:00 UK time.
-    - cron: "35 16 * * 4"
-    - cron: "35 17 * * 4"
-    - cron: "35 3 * * 6"
-    - cron: "35 4 * * 6"
+    # UTC times. GitHub sometimes starts scheduled runs late (even hours), so we
+    # check every 10 minutes; these cover the hour after each slot in both UK
+    # winter (GMT) and summer (BST) time. The first run after the slot posts and
+    # data/state.json stops any second post.
+    #   Thursday 18:00 UK  -> 17:00-18:50 UTC
+    #   Saturday 05:00 UK  -> 04:00-05:50 UTC
+    - cron: "*/10 17-18 * * 4"
+    - cron: "*/10 4-5 * * 6"
   workflow_dispatch:
     inputs:
       kinds:
-        description: "What to post: story, reel, carousel (comma separated) or auto"
+        description: "What to post: auto (whatever is still missing today) or story, reel, carousel"
         type: string
-        default: "story,reel,carousel"
+        default: "auto"
       dry_run:
         description: "Preview only: send to my Telegram, don't publish"
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: write
@@ -37,6 +39,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get the latest state (an earlier run may have just posted)
+        run: git pull --ff-only origin "${GITHUB_REF_NAME}" || true
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -45,6 +50,9 @@ jobs:
         id: plan
         env:
           KINDS: ${{ inputs.kinds }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
         run: python run_publish.py plan
 
       - name: Install tools
@@ -61,7 +69,7 @@ jobs:
           DAY: ${{ steps.plan.outputs.day }}
         run: python run_publish.py build
 
-      - name: Wait until 16:00 UK time
+      - name: Wait until posting time
         if: steps.plan.outputs.go == 'true'
         run: python run_publish.py wait
 
@@ -89,7 +97,7 @@ jobs:
         run: python run_publish.py publish
 
       - name: Save state
-        if: always() && steps.plan.outputs.go == 'true'
+        if: always()
         run: |
           git config user.name "dailymaths-bot"
           git config user.email "dailymaths-bot@users.noreply.github.com"
