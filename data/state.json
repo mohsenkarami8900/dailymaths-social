@@ -1,20 +1,15 @@
 {
  "done": {
-  "story": "2026-10-24",
-  "reel": "2026-10-24",
-  "carousel": "2026-10-24",
-  "story_ig": "2026-10-24",
-  "reel_ig": "2026-10-24",
-  "reel_fb": "2026-10-24",
-  "carousel_ig": "2026-10-24",
-  "carousel_fb": "2026-10-24"
+  "story": "2026-10-29",
+  "reel": "2026-10-29",
+  "carousel": "2026-10-29",
+  "story_ig": "2026-10-29",
+  "reel_ig": "2026-10-29",
+  "reel_fb": "2026-10-29",
+  "carousel_ig": "2026-10-29",
+  "carousel_fb": "2026-10-29"
  },
  "recent_gens": [
-  "k1_think",
-  "k2_99",
-  "k3_squares",
-  "gf_pythag",
-  "gh_roots",
   "k1_bags",
   "k2_think",
   "k3_percent",
@@ -24,6 +19,11 @@
   "k2_minutes",
   "k3_25",
   "gf_triangle",
-  "gh_surds"
+  "gh_surds",
+  "k1_half",
+  "k2_percent",
+  "k3_nth",
+  "gf_expand",
+  "gh_recip"
  ]
 }
