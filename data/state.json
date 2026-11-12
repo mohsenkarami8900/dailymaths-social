@@ -1,20 +1,15 @@
 {
  "done": {
-  "story": "2026-11-05",
-  "reel": "2026-11-05",
-  "carousel": "2026-11-05",
-  "story_ig": "2026-11-05",
-  "reel_ig": "2026-11-05",
-  "reel_fb": "2026-11-05",
-  "carousel_ig": "2026-11-05",
-  "carousel_fb": "2026-11-05"
+  "story": "2026-11-12",
+  "reel": "2026-11-12",
+  "carousel": "2026-11-12",
+  "story_ig": "2026-11-12",
+  "reel_ig": "2026-11-12",
+  "reel_fb": "2026-11-12",
+  "carousel_ig": "2026-11-12",
+  "carousel_fb": "2026-11-12"
  },
  "recent_gens": [
-  "k1_legs",
-  "k2_minutes",
-  "k3_25",
-  "gf_triangle",
-  "gh_surds",
   "k1_half",
   "k2_percent",
   "k3_nth",
@@ -24,7 +19,12 @@
   "k2_sum",
   "k3_polygon",
   "gf_increase",
-  "gh_powers"
+  "gh_powers",
+  "k1_think",
+  "k2_99",
+  "k3_ratio",
+  "gf_speed",
+  "gh_roots"
  ],
  "alerted": "2026-11-07"
 }
