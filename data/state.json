@@ -1,20 +1,15 @@
 {
  "done": {
-  "story": "2026-11-12",
-  "reel": "2026-11-12",
-  "carousel": "2026-11-12",
-  "story_ig": "2026-11-12",
-  "reel_ig": "2026-11-12",
-  "reel_fb": "2026-11-12",
-  "carousel_ig": "2026-11-12",
-  "carousel_fb": "2026-11-12"
+  "story": "2026-11-14",
+  "reel": "2026-11-14",
+  "carousel": "2026-11-14",
+  "story_ig": "2026-11-14",
+  "reel_ig": "2026-11-14",
+  "reel_fb": "2026-11-14",
+  "carousel_ig": "2026-11-14",
+  "carousel_fb": "2026-11-14"
  },
  "recent_gens": [
-  "k1_half",
-  "k2_percent",
-  "k3_nth",
-  "gf_expand",
-  "gh_recip",
   "k1_coins",
   "k2_sum",
   "k3_polygon",
@@ -24,7 +19,12 @@
   "k2_99",
   "k3_ratio",
   "gf_speed",
-  "gh_roots"
+  "gh_roots",
+  "k1_birds",
+  "k2_books",
+  "k3_squares",
+  "gf_triangle",
+  "gh_ff"
  ],
  "alerted": "2026-11-07"
 }
